@@ -15,6 +15,37 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ============================================
+-- Create OTPs Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS otps (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  otp_hash VARCHAR(255) NOT NULL,
+  purpose VARCHAR(50) NOT NULL,
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 5,
+  used BOOLEAN DEFAULT FALSE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_otps_user_purpose ON otps(user_id, purpose);
+
+-- ============================================
+-- Create Password Reset Tokens Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(255) NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_user ON password_reset_tokens(user_id);
+
+-- ============================================
 -- Create Indexes
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

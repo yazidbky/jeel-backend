@@ -1,4 +1,4 @@
-import { createUser, getUserById, verifyUser } from "./model.js";
+import { createUser, getUserById, verifyUser } from "../model.js";
 
 const isValidEmail = (value) => /\S+@\S+\.\S+/.test(value);
 

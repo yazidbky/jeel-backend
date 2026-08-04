@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import pool from "../../db/connection.js";
+import pool from "../../../core/db/connection.js";
 import { v4 as uuidv4 } from "uuid";
 
 const getSafeUser = (user) => ({
@@ -18,18 +18,13 @@ export const findUserByEmail = async (email) => {
   return result.rows[0] || null;
 };
 
-export const createUser = async ({ name, email, password }) => {
-  const existingUser = await findUserByEmail(email);
-  if (existingUser) {
-    throw new Error("User already exists");
-  }
-
+// Called only after OTP is verified (register flow)
+export const createUser = async ({ name, email, passwordHash }) => {
   const uuid = uuidv4();
-  const hashedPassword = bcrypt.hashSync(password, 10);
 
   const result = await pool.query(
     "INSERT INTO users (uuid, name, email, password) VALUES ($1, $2, $3, $4) RETURNING *",
-    [uuid, name, email.toLowerCase(), hashedPassword],
+    [uuid, name, email.toLowerCase(), passwordHash],
   );
 
   const newUser = result.rows[0];
@@ -39,17 +34,15 @@ export const createUser = async ({ name, email, password }) => {
   };
 };
 
-export const verifyUser = async (email, password) => {
+// Checks password only, no token issued (token comes after OTP)
+export const checkPassword = async (email, password) => {
   const user = await findUserByEmail(email);
   if (!user) return null;
 
   const isValidPassword = bcrypt.compareSync(password, user.password);
   if (!isValidPassword) return null;
 
-  return {
-    user: getSafeUser(user),
-    token: generateToken(user),
-  };
+  return user;
 };
 
 export const generateToken = (user) => {
@@ -64,8 +57,3 @@ export const getUserById = async (id) => {
   const result = await pool.query("SELECT * FROM users WHERE uuid = $1", [id]);
   return result.rows[0] ? getSafeUser(result.rows[0]) : null;
 };
-
-// export const getUserById = (id) => {
-//   const user = users.find((item) => item.id === id);
-//   return user ? getSafeUser(user) : null;
-// };

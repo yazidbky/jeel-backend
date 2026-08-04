@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import authRoutes from "./features/auth/routes.js";
+import forgetPassword from "./features/auth/password_reset_routes.js";
 import { initializeDatabase } from "./db/init.js";
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/forget-password",forgetPassword)
 
 // Initialize database and start server
 initializeDatabase()

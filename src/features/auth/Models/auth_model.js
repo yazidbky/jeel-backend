@@ -57,3 +57,10 @@ export const getUserById = async (id) => {
   const result = await pool.query("SELECT * FROM users WHERE uuid = $1", [id]);
   return result.rows[0] ? getSafeUser(result.rows[0]) : null;
 };
+
+export const updateUserPassword = async (userId, passwordHash) => {
+  await pool.query(
+    "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+    [passwordHash, userId],
+  );
+};

@@ -5,6 +5,7 @@ import {
   getUserById,
   findUserByEmail,
   generateToken,
+  updateUserPassword,
 } from "../Models/auth_model.js";
 import {
   createPendingRegistration,
@@ -164,5 +165,53 @@ export const getMe = async (req, res) => {
     return res.status(200).json({ user });
   } catch (error) {
     return res.status(500).json({ message: "Failed to retrieve user" });
+  }
+};
+
+// ===== CHANGE PASSWORD: requires auth token =====
+export const changePassword = async (req, res) => {
+  const { oldPassword, newPassword } = req.body || {};
+
+  if (!oldPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ message: "Old password and new password are required" });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ message: "New password must be at least 6 characters" });
+  }
+
+  if (oldPassword === newPassword) {
+    return res
+      .status(400)
+      .json({ message: "New password must be different from old password" });
+  }
+
+  try {
+    const emailFromToken = req.user?.email;
+    if (!emailFromToken) {
+      return res.status(401).json({ message: "Invalid authentication token" });
+    }
+
+    const user = await findUserByEmail(emailFromToken);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isValidOldPassword = bcrypt.compareSync(oldPassword, user.password);
+    if (!isValidOldPassword) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    const newPasswordHash = bcrypt.hashSync(newPassword, 10);
+    await updateUserPassword(user.id, newPasswordHash);
+
+    return res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to change password" });
   }
 };

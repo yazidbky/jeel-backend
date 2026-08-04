@@ -1,41 +1,48 @@
-import pool from "../../db/connection.js";
+import pool from "../../core/db/connection.js";
+import { v4 as uuidv4 } from "uuid";
 
-// Get all users
+const getSafeUser = (user) => ({
+  id: user.id,
+  uuid: user.uuid,
+  name: user.name,
+  email: user.email,
+  createdAt: user.created_at,
+});
+
+export const createUser = async ({ name, email, password }) => {
+  const uuid = uuidv4();
+  const result = await pool.query(
+    "INSERT INTO users (uuid, name, email, password) VALUES ($1, $2, $3, $4) RETURNING *",
+    [uuid, name, email, password],
+  );
+
+  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+};
+
 export const getAllUsers = async () => {
+  const result = await pool.query("SELECT * FROM users");
+  return result.rows.map(getSafeUser);
+};
+
+export const getUserById = async (userId) => {
+  const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+};
+
+export const deleteUserById = async (userId) => {
   const result = await pool.query(
-    "SELECT id, uuid, name, email, created_at FROM users ORDER BY created_at DESC",
+    "DELETE FROM users WHERE id = $1 RETURNING *",
+    [userId],
   );
-  return result.rows;
+
+  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
 };
 
-// Get user by UUID
-export const getUserByUUID = async (uuid) => {
-  const result = await pool.query("SELECT * FROM users WHERE uuid = $1", [
-    uuid,
-  ]);
-  return result.rows[0] || null;
-};
-
-// Update user
-export const updateUser = async (uuid, { name, email }) => {
+export const updateUser = async (userId, { name, email }) => {
   const result = await pool.query(
-    "UPDATE users SET name = $1, email = $2, updated_at = CURRENT_TIMESTAMP WHERE uuid = $3 RETURNING id, uuid, name, email, created_at",
-    [name, email, uuid],
+    "UPDATE users SET name = $1, email = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *",
+    [name, email, userId],
   );
-  return result.rows[0] || null;
-};
 
-// Delete user
-export const deleteUser = async (uuid) => {
-  const result = await pool.query(
-    "DELETE FROM users WHERE uuid = $1 RETURNING id, uuid, name, email",
-    [uuid],
-  );
-  return result.rows[0] || null;
-};
-
-// Get user count
-export const getUserCount = async () => {
-  const result = await pool.query("SELECT COUNT(*) as count FROM users");
-  return parseInt(result.rows[0].count, 10);
+  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
 };

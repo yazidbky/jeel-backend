@@ -1,9 +1,9 @@
 import bcrypt from "bcryptjs";
-import {  updateUserPassword } from "../models/user.model.js";
-import { findUserByEmail } from "../models/auth_model.js";
-import { createOtp, verifyOtp as verifyOtpModel } from "../models/otp.model.js";
-import { createResetToken, verifyResetToken } from "../models/passwordResetToken.model.js";
-import { sendOtpEmail } from "../services/email.service.js";
+import { updateUserPassword } from "../Models/user_model.js";
+import { findUserByEmail } from "../Models/auth_model.js";
+import { createOtp, verifyOtp as verifyOtpModel } from "../Models/otp_model.js";
+import { createResetToken, verifyResetToken } from "../Models/forget_password_token.model.js";
+import { sendOtpEmail } from "../Services/email_service.js";
 
 const PURPOSE = "password_reset";
 
@@ -14,7 +14,6 @@ export const forgotPassword = async (req, res) => {
 
     const user = await findUserByEmail(email);
 
-    // Always return generic success — never reveal if email exists
     if (user) {
       const otp = await createOtp(user.id, PURPOSE);
       await sendOtpEmail(user.email, otp);

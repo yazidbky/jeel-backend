@@ -1,12 +1,11 @@
-import pool from "../../../db/connection.js";
-import { generateOtp, hashValue } from "../../../utils/crypto.util.js";
+import pool from "../../../core/db/connection.js";
+import { generateOtp, hashValue } from "../../../core/utils/crypto.utils.js";
 
 const OTP_EXPIRY_MINUTES = 10;
 
 export const createOtp = async (userId, purpose) => {
-  // Invalidate any previous unused OTPs for this user+purpose
-  await pool.query(
-    "UPDATE otps SET used = TRUE WHERE user_id = $1 AND purpose = $2 AND used = FALSE",
+  await pool.execute(
+    "UPDATE otps SET used = TRUE WHERE user_id = ? AND purpose = ? AND used = FALSE",
     [userId, purpose],
   );
 
@@ -14,24 +13,24 @@ export const createOtp = async (userId, purpose) => {
   const otpHash = hashValue(rawOtp);
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-  await pool.query(
+  await pool.execute(
     `INSERT INTO otps (user_id, otp_hash, purpose, expires_at)
-     VALUES ($1, $2, $3, $4)`,
+     VALUES (?, ?, ?, ?)`,
     [userId, otpHash, purpose, expiresAt],
   );
 
-  return rawOtp; // raw value only returned here, to be emailed — never stored raw
+  return rawOtp;
 };
 
 export const verifyOtp = async (userId, purpose, submittedOtp) => {
-  const result = await pool.query(
+  const [rows] = await pool.execute(
     `SELECT * FROM otps
-     WHERE user_id = $1 AND purpose = $2 AND used = FALSE
+     WHERE user_id = ? AND purpose = ? AND used = FALSE
      ORDER BY created_at DESC LIMIT 1`,
     [userId, purpose],
   );
 
-  const otpRow = result.rows[0];
+  const otpRow = rows[0];
   if (!otpRow) return { valid: false, reason: "No active OTP found" };
 
   if (new Date(otpRow.expires_at) < new Date()) {
@@ -44,13 +43,13 @@ export const verifyOtp = async (userId, purpose, submittedOtp) => {
 
   const submittedHash = hashValue(submittedOtp);
   if (submittedHash !== otpRow.otp_hash) {
-    await pool.query(
-      "UPDATE otps SET attempts = attempts + 1 WHERE id = $1",
+    await pool.execute(
+      "UPDATE otps SET attempts = attempts + 1 WHERE id = ?",
       [otpRow.id],
     );
     return { valid: false, reason: "Incorrect OTP" };
   }
 
-  await pool.query("UPDATE otps SET used = TRUE WHERE id = $1", [otpRow.id]);
+  await pool.execute("UPDATE otps SET used = TRUE WHERE id = ?", [otpRow.id]);
   return { valid: true };
 };

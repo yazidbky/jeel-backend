@@ -11,38 +11,39 @@ const getSafeUser = (user) => ({
 
 export const createUser = async ({ name, email, password }) => {
   const uuid = uuidv4();
-  const result = await pool.query(
-    "INSERT INTO users (uuid, name, email, password) VALUES ($1, $2, $3, $4) RETURNING *",
+  await pool.execute(
+    "INSERT INTO users (uuid, name, email, password) VALUES (?, ?, ?, ?)",
     [uuid, name, email, password],
   );
 
-  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+  const [rows] = await pool.execute("SELECT * FROM users WHERE id = LAST_INSERT_ID() LIMIT 1");
+  return rows[0] ? getSafeUser(rows[0]) : null;
 };
 
 export const getAllUsers = async () => {
-  const result = await pool.query("SELECT * FROM users");
-  return result.rows.map(getSafeUser);
+  const [rows] = await pool.execute("SELECT * FROM users");
+  return rows.map(getSafeUser);
 };
 
 export const getUserById = async (userId) => {
-  const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
-  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+  const [rows] = await pool.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [userId]);
+  return rows[0] ? getSafeUser(rows[0]) : null;
 };
 
 export const deleteUserById = async (userId) => {
-  const result = await pool.query(
-    "DELETE FROM users WHERE id = $1 RETURNING *",
-    [userId],
-  );
+  const [rows] = await pool.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [userId]);
+  if (!rows[0]) return null;
 
-  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+  await pool.execute("DELETE FROM users WHERE id = ?", [userId]);
+  return getSafeUser(rows[0]);
 };
 
 export const updateUser = async (userId, { name, email }) => {
-  const result = await pool.query(
-    "UPDATE users SET name = $1, email = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *",
+  await pool.execute(
+    "UPDATE users SET name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     [name, email, userId],
   );
 
-  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+  const [rows] = await pool.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [userId]);
+  return rows[0] ? getSafeUser(rows[0]) : null;
 };

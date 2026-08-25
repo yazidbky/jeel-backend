@@ -11,30 +11,32 @@ const getSafeUser = (user) => ({
 });
 
 export const findUserByEmail = async (email) => {
-  const result = await pool.query(
-    "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
+  const [rows] = await pool.execute(
+    "SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
     [email],
   );
-  return result.rows[0] || null;
+  return rows[0] || null;
 };
 
-// Called only after OTP is verified (register flow)
 export const createUser = async ({ name, email, passwordHash }) => {
   const uuid = uuidv4();
 
-  const result = await pool.query(
-    "INSERT INTO users (uuid, name, email, password) VALUES ($1, $2, $3, $4) RETURNING *",
+  await pool.execute(
+    "INSERT INTO users (uuid, name, email, password) VALUES (?, ?, ?, ?)",
     [uuid, name, email.toLowerCase(), passwordHash],
   );
 
-  const newUser = result.rows[0];
+  const [rows] = await pool.execute(
+    "SELECT * FROM users WHERE id = LAST_INSERT_ID() LIMIT 1",
+  );
+
+  const newUser = rows[0];
   return {
     user: getSafeUser(newUser),
     token: generateToken(newUser),
   };
 };
 
-// Checks password only, no token issued (token comes after OTP)
 export const checkPassword = async (email, password) => {
   const user = await findUserByEmail(email);
   if (!user) return null;
@@ -54,13 +56,13 @@ export const generateToken = (user) => {
 };
 
 export const getUserById = async (id) => {
-  const result = await pool.query("SELECT * FROM users WHERE uuid = $1", [id]);
-  return result.rows[0] ? getSafeUser(result.rows[0]) : null;
+  const [rows] = await pool.execute("SELECT * FROM users WHERE uuid = ? LIMIT 1", [id]);
+  return rows[0] ? getSafeUser(rows[0]) : null;
 };
 
 export const updateUserPassword = async (userId, passwordHash) => {
-  await pool.query(
-    "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+  await pool.execute(
+    "UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     [passwordHash, userId],
   );
 };

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import pool from "../../../core/db/connection.js";
 import { v4 as uuidv4 } from "uuid";
 
@@ -7,6 +8,8 @@ const getSafeUser = (user) => ({
   id: user.uuid,
   name: user.name,
   email: user.email,
+  role: user.role || "user",
+  emailVerified: Boolean(user.email_verified),
   createdAt: user.created_at,
 });
 
@@ -18,12 +21,12 @@ export const findUserByEmail = async (email) => {
   return rows[0] || null;
 };
 
-export const createUser = async ({ name, email, passwordHash }) => {
+export const createUser = async ({ name, email, passwordHash, role = "user", emailVerified = false }) => {
   const uuid = uuidv4();
 
   await pool.execute(
-    "INSERT INTO users (uuid, name, email, password) VALUES (?, ?, ?, ?)",
-    [uuid, name, email.toLowerCase(), passwordHash],
+    "INSERT INTO users (uuid, name, email, password, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)",
+    [uuid, name, email.toLowerCase(), passwordHash, role, emailVerified ? 1 : 0],
   );
 
   const [rows] = await pool.execute(
@@ -49,7 +52,13 @@ export const checkPassword = async (email, password) => {
 
 export const generateToken = (user) => {
   return jwt.sign(
-    { id: user.uuid, email: user.email, name: user.name },
+    {
+      id: user.uuid,
+      email: user.email,
+      name: user.name,
+      role: user.role || "user",
+      jti: crypto.randomUUID(),
+    },
     process.env.JWT_SECRET || "dev-secret",
     { expiresIn: "1h" },
   );

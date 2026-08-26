@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import {
   createUser,
   checkPassword,
@@ -16,6 +17,7 @@ import {
 import { createOtp, verifyOtp } from "../Models/otp_model.js";
 import { sendOtpEmail } from "../Services/email_service.js";
 import { hashValue } from "../../../core/utils/crypto.utils.js";
+import { addTokenToBlacklist, clearRateLimit } from "../../../core/utils/security.js";
 
 const isValidEmail = (value) => /\S+@\S+\.\S+/.test(value);
 
@@ -47,6 +49,7 @@ export const register = async (req, res) => {
     const passwordHash = bcrypt.hashSync(password, 10);
     const otp = await createPendingRegistration({ name, email, passwordHash });
     await sendOtpEmail(email, otp);
+    clearRateLimit(`register:${email.toLowerCase()}`);
 
     return res.status(200).json({
       message: "OTP sent to your email. Verify to complete registration.",
@@ -86,6 +89,8 @@ export const verifyRegisterOtp = async (req, res) => {
       name: pending.name,
       email: pending.email,
       passwordHash: pending.password_hash,
+      role: "user",
+      emailVerified: true,
     });
     await deletePendingRegistration(pending.id);
 
@@ -113,8 +118,9 @@ export const login = async (req, res) => {
 
     const otp = await createOtp(user.id, "login");
     await sendOtpEmail(user.email, otp);
+    clearRateLimit(`login:${user.email.toLowerCase()}`);
 
-    return res.status(200).json({ message: "OTP sent to your email" });
+    return res.status(200).json({ message: "OTP sent to your email. Please check your inbox." });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Login failed" });
@@ -139,13 +145,15 @@ export const verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ message: result.reason });
     }
 
-    const token = generateToken(user);
+    const token = generateToken({ ...user, role: user.role || "user" });
     return res.status(200).json({
       message: "Login successful",
       user: {
         id: user.uuid,
         name: user.name,
         email: user.email,
+        role: user.role || "user",
+        emailVerified: Boolean(user.email_verified),
         createdAt: user.created_at,
       },
       token,
@@ -213,5 +221,23 @@ export const changePassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to change password" });
+  }
+};
+
+export const logout = async (req, res) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(400).json({ message: "Authorization token is required" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET );
+    addTokenToBlacklist(token, decoded.exp ? decoded.exp * 1000 : Date.now() + 60 * 60 * 1000);
+    return res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };

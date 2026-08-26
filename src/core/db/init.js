@@ -1,4 +1,53 @@
+import bcrypt from "bcryptjs";
 import pool from "./connection.js";
+
+const ensureColumn = async (tableName, columnDefinition, columnName) => {
+  try {
+    await pool.execute(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnDefinition}`);
+  } catch (error) {
+    if (!String(error?.code).includes("1060") && !String(error?.message).includes("Duplicate column")) {
+      throw error;
+    }
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS count FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [tableName, columnName],
+  );
+
+  return Number(rows[0]?.count || 0) > 0;
+};
+
+const createDefaultAdmin = async () => {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    return;
+  }
+
+  const [rows] = await pool.execute(
+    "SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
+    [adminEmail],
+  );
+
+  if (rows.length > 0) {
+    await pool.execute(
+      "UPDATE users SET role = 'admin', email_verified = TRUE WHERE LOWER(email) = LOWER(?)",
+      [adminEmail],
+    );
+    return;
+  }
+
+  const passwordHash = bcrypt.hashSync(adminPassword, 10);
+  const uuid = crypto.randomUUID();
+  await pool.execute(
+    "INSERT INTO users (uuid, name, email, password, role, email_verified) VALUES (?, ?, ?, ?, 'admin', TRUE)",
+    [uuid, "Admin", adminEmail, passwordHash],
+  );
+
+  console.log("✓ Default admin user created");
+};
 
 const initializeDatabase = async () => {
   try {
@@ -11,12 +60,17 @@ const initializeDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'user',
+        email_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
 
     console.log("✓ Users table created successfully");
+
+    await ensureColumn("users", "role VARCHAR(20) NOT NULL DEFAULT 'user'", "role");
+    await ensureColumn("users", "email_verified BOOLEAN DEFAULT FALSE", "email_verified");
 
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS otps (
@@ -66,7 +120,22 @@ const initializeDatabase = async () => {
     console.log("✓ Pending registration table created successfully");
 
     await pool.execute(`
+      CREATE TABLE IF NOT EXISTS token_blacklist (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        token_hash VARCHAR(255) NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log("✓ Token blacklist table created successfully");
+
+    await pool.execute(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
+    `);
+
+    await pool.execute(`
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)
     `);
 
     await pool.execute(`
@@ -80,6 +149,8 @@ const initializeDatabase = async () => {
     await pool.execute(`
       CREATE INDEX IF NOT EXISTS idx_pending_registrations_email ON pending_registrations(email)
     `);
+
+    await createDefaultAdmin();
 
     console.log("✓ Database initialization completed!");
   } catch (error) {

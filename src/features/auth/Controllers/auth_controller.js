@@ -5,7 +5,11 @@ import {
   checkPassword,
   getUserById,
   findUserByEmail,
-  generateToken,
+  generateAccessToken,
+  generateRefreshToken,
+  createRefreshTokenRecord,
+  verifyRefreshTokenRecord,
+  rotateRefreshToken,
   updateUserPassword,
 } from "../Models/auth_model.js";
 import {
@@ -145,7 +149,10 @@ export const verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ message: result.reason });
     }
 
-    const token = generateToken({ ...user, role: user.role || "user" });
+    const accessToken = generateAccessToken({ ...user, role: user.role || "user" });
+    const refreshToken = generateRefreshToken({ ...user, role: user.role || "user" });
+    await createRefreshTokenRecord(user.id, refreshToken);
+
     return res.status(200).json({
       message: "Login successful",
       user: {
@@ -156,7 +163,8 @@ export const verifyLoginOtp = async (req, res) => {
         emailVerified: Boolean(user.email_verified),
         createdAt: user.created_at,
       },
-      token,
+      token: accessToken,
+      refreshToken,
     });
   } catch (error) {
     console.error(error);
@@ -226,6 +234,7 @@ export const changePassword = async (req, res) => {
 
 export const logout = async (req, res) => {
   const authHeader = req.headers.authorization;
+  const { refreshToken } = req.body || {};
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(400).json({ message: "Authorization token is required" });
@@ -234,10 +243,63 @@ export const logout = async (req, res) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
     addTokenToBlacklist(token, decoded.exp ? decoded.exp * 1000 : Date.now() + 60 * 60 * 1000);
+
+    if (refreshToken) {
+      const decodedRefresh = jwt.verify(refreshToken, process.env.JWT_SECRET || "dev-secret");
+      if (decodedRefresh?.type === "refresh" && decodedRefresh.email) {
+        const user = await findUserByEmail(decodedRefresh.email);
+        if (user) {
+          await pool.execute(
+            "UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = ? AND expires_at > NOW()",
+            [user.id],
+          );
+        }
+      }
+    }
+
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+export const refreshAccessToken = async (req, res) => {
+  const { refreshToken } = req.body || {};
+
+  if (!refreshToken) {
+    return res.status(400).json({ message: "Refresh token is required" });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_JWT_SECRET || "dev-secret");
+
+    if (decoded.type !== "refresh") {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const user = await findUserByEmail(decoded.email);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const isValidRefreshToken = await verifyRefreshTokenRecord(user.id, refreshToken);
+    if (!isValidRefreshToken) {
+      return res.status(401).json({ message: "Refresh token expired or revoked" });
+    }
+
+    const newAccessToken = generateAccessToken({ ...user, role: user.role || "user" });
+    const newRefreshToken = generateRefreshToken({ ...user, role: user.role || "user" });
+    await rotateRefreshToken(user.id, refreshToken, newRefreshToken);
+
+    return res.status(200).json({
+      message: "Tokens refreshed successfully",
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(401).json({ message: "Invalid or expired refresh token" });
   }
 };

@@ -7,6 +7,7 @@ import {
   getMe,
   changePassword,
   logout,
+  refreshAccessToken,
 } from "../Controllers/auth_controller.js";
 import { authMiddleware, requireRole } from "../Middlewares/middleware.js";
 import { rateLimiter } from "../../../core/utils/security.js";
@@ -18,6 +19,7 @@ router.post("/register/verify-otp", verifyRegisterOtp);
 
 router.post("/login", rateLimiter({ prefix: "login" }), login);
 router.post("/login/verify-otp", verifyLoginOtp);
+router.post("/refresh", refreshAccessToken);
 router.post("/logout", authMiddleware, logout);
 
 router.get("/me", authMiddleware, getMe);

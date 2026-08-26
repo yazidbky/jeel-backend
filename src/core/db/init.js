@@ -131,6 +131,20 @@ const initializeDatabase = async () => {
     console.log("✓ Token blacklist table created successfully");
 
     await pool.execute(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        token_hash VARCHAR(255) NOT NULL,
+        revoked BOOLEAN DEFAULT FALSE,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    console.log("✓ Refresh token table created successfully");
+
+    await pool.execute(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
     `);
 

@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-import { isTokenBlacklisted } from "../../core/utils/security.js";
-
+import { isTokenBlacklisted } from "../../../core/utils/security.js";
 export const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 

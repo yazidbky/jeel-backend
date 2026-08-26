@@ -19,6 +19,7 @@ import {
   deletePendingRegistration,
 } from "../Models/pendingRegistration.model.js";
 import { createOtp, verifyOtp } from "../Models/otp_model.js";
+import { createResetToken, consumePasswordChangeAuthorization } from "../Models/forget_password_token.model.js";
 import { sendOtpEmail } from "../Services/email_service.js";
 import { hashValue } from "../../../core/utils/crypto.utils.js";
 import { addTokenToBlacklist, clearRateLimit } from "../../../core/utils/security.js";
@@ -184,7 +185,52 @@ export const getMe = async (req, res) => {
   }
 };
 
-// ===== CHANGE PASSWORD: requires auth token =====
+// ===== CHANGE PASSWORD: request OTP =====
+export const requestPasswordChangeOtp = async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user?.email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const otp = await createOtp(user.id, "password_change");
+    await sendOtpEmail(user.email, otp);
+
+    return res.status(200).json({ message: "OTP sent to your email" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to send password change OTP" });
+  }
+};
+
+// ===== CHANGE PASSWORD: verify OTP and authorize the next password screen =====
+export const verifyPasswordChangeOtp = async (req, res) => {
+  const { otp } = req.body || {};
+
+  if (!otp) {
+    return res.status(400).json({ message: "OTP is required" });
+  }
+
+  try {
+    const user = await findUserByEmail(req.user?.email);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const otpResult = await verifyOtp(user.id, "password_change", otp);
+    if (!otpResult.valid) {
+      return res.status(400).json({ message: otpResult.reason });
+    }
+
+    await createResetToken(user.id);
+    return res.status(200).json({ message: "OTP verified. You can now change your password." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to verify password change OTP" });
+  }
+};
+
+// ===== CHANGE PASSWORD: requires auth token and prior OTP verification =====
 export const changePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
 
@@ -198,12 +244,6 @@ export const changePassword = async (req, res) => {
     return res
       .status(400)
       .json({ message: "New password must be at least 6 characters" });
-  }
-
-  if (oldPassword === newPassword) {
-    return res
-      .status(400)
-      .json({ message: "New password must be different from old password" });
   }
 
   try {
@@ -220,6 +260,11 @@ export const changePassword = async (req, res) => {
     const isValidOldPassword = bcrypt.compareSync(oldPassword, user.password);
     if (!isValidOldPassword) {
       return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    const isAuthorized = await consumePasswordChangeAuthorization(user.id);
+    if (!isAuthorized) {
+      return res.status(403).json({ message: "Verify the OTP before changing your password" });
     }
 
     const newPasswordHash = bcrypt.hashSync(newPassword, 10);

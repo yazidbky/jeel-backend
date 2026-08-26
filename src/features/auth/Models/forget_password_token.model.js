@@ -48,3 +48,15 @@ export const verifyResetToken = async (userId, submittedToken) => {
   );
   return { valid: true };
 };
+
+export const consumePasswordChangeAuthorization = async (userId) => {
+  const [result] = await pool.execute(
+    `UPDATE password_reset_tokens
+     SET used = TRUE
+     WHERE user_id = ? AND used = FALSE AND expires_at > NOW()
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId],
+  );
+
+  return result.affectedRows > 0;
+};

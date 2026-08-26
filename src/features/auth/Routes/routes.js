@@ -5,6 +5,8 @@ import {
   login,
   verifyLoginOtp,
   getMe,
+  requestPasswordChangeOtp,
+  verifyPasswordChangeOtp,
   changePassword,
   logout,
   refreshAccessToken,
@@ -23,6 +25,8 @@ router.post("/refresh", refreshAccessToken);
 router.post("/logout", authMiddleware, logout);
 
 router.get("/me", authMiddleware, getMe);
+router.post("/change-password/request-otp", authMiddleware, requestPasswordChangeOtp);
+router.post("/change-password/verify-otp", authMiddleware, verifyPasswordChangeOtp);
 router.post("/change-password", authMiddleware, changePassword);
 router.get("/admin", authMiddleware, requireRole("admin"), (req, res) => {
   res.status(200).json({ message: "Admin access granted", user: req.user });

@@ -1,11 +1,11 @@
 import bcrypt from "bcryptjs";
-import { findUserByEmail } from "../Models/auth_model.js";
-import { createOtp, verifyOtp as verifyOtpModel } from "../Models/otp_model.js";
+import { findUserByEmail } from "../../auth/Models/auth_model.js";
+import { createOtp, verifyOtp as verifyOtpModel } from "../../auth/Models/otp_model.js";
 import {
   createResetToken,
   resetPasswordWithToken,
 } from "../Models/forget_password_token.model.js";
-import { sendOtpEmail } from "../Services/email_service.js";
+import { sendOtpEmail } from "../../auth/Services/email_service.js";
 
 const PURPOSE = "password_reset";
 const RESET_COOKIE = "password_reset_token";

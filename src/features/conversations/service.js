@@ -2,10 +2,11 @@ import pool from "../../core/db/connection.js";
 import { isParticipant as isParticipantModel, createConversation as createConversationModel, listConversations as listConversationsModel, getConversation as getConversationModel, addParticipant as addParticipantModel, markRead as markReadModel } from "./model.js";
 
 // Helper to convert UUID to integer ID
-const uuidToIntId = async (uuid) => {
+const uuidToIntId = async (uuid) => {   
 	console.log("🔍 uuidToIntId - looking up UUID:", uuid);
 	const [users] = await pool.execute("SELECT id FROM users WHERE uuid = ?", [uuid]);
 	console.log("🔍 uuidToIntId - found users:", users);
+      console.log("🔍 uuidToIntId - query returned:", users);   // <-- add this
 	if (users.length === 0) {
 		console.log("❌ User not found for UUID:", uuid);
 		const error = new Error("User not found");
@@ -31,7 +32,7 @@ export const create = async (input, userUuid) => {
 	console.log("Input participantIds:", input.participantIds);
 	
 	try {
-		const userId = await uuidToIntId(userUuid);
+	const userId = await uuidToIntId(userUuid);
 		console.log("Converted userId (integer):", userId);
 		
 		const result = await createConversationModel({ ...input, createdBy: userId });

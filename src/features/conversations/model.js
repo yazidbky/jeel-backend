@@ -14,16 +14,16 @@ export const createConversation = async ({ type, name, createdBy, participantIds
 		await connection.beginTransaction();
 		
 		// Convert createdBy UUID to integer ID
-		const [creatorUsers] = await connection.execute(
-			"SELECT id FROM users WHERE id = ?",
-			[createdBy],
-		);
-		if (creatorUsers.length === 0) {
-			await connection.rollback();
-			const error = new Error(`Creator user not found`);
-			error.statusCode = 400;
-			throw error;
-		}
+		// const [creatorUsers] = await connection.execute(
+		// 	"SELECT uuid FROM users WHERE uuid = ?",
+		// 	[createdBy],
+		// );
+		// if (creatorUsers.length === 0) {
+		// 	await connection.rollback();
+		// 	const error = new Error(`Creator user not found`);
+		// 	error.statusCode = 400;
+		// 	throw error;
+		// }
 		const createdByIntId = createdBy;  // Already an integer ID
 		
 		// Convert participant UUIDs to integer IDs

@@ -13,7 +13,7 @@ router.post("/test", (req, res) => {
   res.json({ message: "test route works" });
 });
 
-router.post("/", createConversation);
+router.post("/create", createConversation);
 router.get("/", list);
 router.get("/:id", detail);
 router.post("/:id/participants", add);

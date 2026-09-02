@@ -5,6 +5,7 @@ import { follow, unfollow, following, followers } from "./controller.js";
 const router = express.Router();
 router.use(authMiddleware);
 router.get("/following", following);
+router.get("/followers", followers);
 router.post(
   "/:userId",
   rateLimiter({ prefix: "follow", maxAttempts: 30 }),

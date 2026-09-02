@@ -1,9 +1,9 @@
-import pool from "./src/core/db/connection.js";
-import app from "./src/app.js";
+import pool from "../src/core/db/connection.js";
+import app from "../src/app.js";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import { randomUUID } from "crypto";
-import realPool from "./src/core/db/connection.js";
+import realPool from "../src/core/db/connection.js";
 
 const testPool = {
   execute: (...args) => realPool.execute(...args),
@@ -51,6 +51,11 @@ export async function createTestPost(userId, overrides = {}) {
 // Wipes tables between tests. Order matters due to FK constraints —
 // children before parents.
 export async function cleanupDb() {
+  await pool.execute("DELETE FROM message_status");
+  await pool.execute("DELETE FROM message_attachments");
+  await pool.execute("DELETE FROM messages");
+  await pool.execute("DELETE FROM conversation_participants");
+  await pool.execute("DELETE FROM conversations");
   await pool.execute("DELETE FROM shares");
   await pool.execute("DELETE FROM likes");
   await pool.execute("DELETE FROM comments");

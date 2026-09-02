@@ -1,0 +1,12 @@
+fuji refresh token 
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Ijk1MGQzYzU4LTg2YjItNDJhMC05MTAyLTVkOTA4ZWY0NjhhMSIsImVtYWlsIjoiZnVqaTkyMTJAZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6ImU3ODJlNDE1LTBlNjUtNDRlYS04NTViLTBkODU5MzAxYzQ5NiIsImlhdCI6MTc4ODM0OTQ2NiwiZXhwIjoxNzg4OTU0MjY2fQ.Cav3CqMliqiYSryrTfRCL23jDf1ay_Yx6_GFSpDGK4M
+
+
+yazid refresh token 
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxZGJkZjFiLTAyZTktNDcxMS1iNDkwLTM5YjQ3MTU1YWFkOSIsImVtYWlsIjoieWF6aWRiZWtrYWkzQGdtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwidHlwZSI6InJlZnJlc2giLCJqdGkiOiIzMTAwMWZkMy1lNjBjLTQyYWItYmMzZS1jOGUzODJmZGVjMzAiLCJpYXQiOjE3ODgzNDk1NjcsImV4cCI6MTc4ODk1NDM2N30.bcL5U-wMBsem96372hs-jSiWCJflOgRd493cPmbtAhY
+
+
+
+MariaDB [jeel_db]> SELECT * FROM users ; +-----+--------------------------------------+-------+------------------------+--------------------------------------------------------------+---------------------+---------------------+-------+----------------+ | id  | uuid                                 | name  | email                  | password                                                     | created_at          | updated_at          | role  | email_verified | +-----+--------------------------------------+-------+------------------------+--------------------------------------------------------------+---------------------+---------------------+-------+----------------+ | 804 | dc98055d-2577-4692-8433-e432ba1d5ac5 | Admin | admin@jeel.com         | $2a$12$wUuF/9TWoghYWt6uSgXvi.2MibfQdFyt6fadSn/7c2LOrrEJZFVXm | 2026-09-01 12:30:11 | 2026-09-01 12:30:11 | admin |              1 | | 805 | b1dbdf1b-02e9-4711-b490-39b47155aad9 | yazid | yazidbekkai3@gmail.com | $2a$10$Bpw/N/yaWotksFWSKZt7TeVLynUi9dm1xZWF/U3AIHxIBaeBr36tK | 2026-09-02 10:14:19 | 2026-09-02 10:14:19 | user  |              1 | | 806 | 950d3c58-86b2-42a0-9102-5d908ef468a1 | fuji  | fuji9212@gmail.com     | $2a$10$LWcW2XpVfQBFZJEtPaPuaOAUce7BzUnX4xN3eBpsBQvD1RdRAneSa | 2026-09-02 10:16:14 | 2026-09-02 10:16:14 | user  |              1 | +-----+--------------------------------------+-------+------------------------+--------------------------------------------------------------+---------------------+---------------------+-------+----------------+

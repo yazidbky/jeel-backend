@@ -39,10 +39,20 @@ export const getAllUsersController = async (req,res) => {
 };
 
 export const getUserByIdController = async (req, res) => {
-  const userId = req.params.id;
+  const userUuid = req.params.id;
 
   try {
-    const user = await getUserById(userId);
+    // If it's a UUID, look up by UUID; otherwise by integer ID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let user;
+    if (uuidRegex.test(userUuid)) {
+      const pool = (await import("../../core/db/connection.js")).default;
+      const [rows] = await pool.execute("SELECT * FROM users WHERE uuid = ?", [userUuid]);
+      user = rows[0];
+    } else {
+      user = await getUserById(userUuid);
+    }
+    
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -54,7 +64,7 @@ export const getUserByIdController = async (req, res) => {
 };
 
 export const updateUserController = async (req, res) => {
-  const userId = req.params.id;
+  const userUuid = req.params.id;
   const { name, email } = req.body;
 
   if (!name && !email) {
@@ -64,6 +74,18 @@ export const updateUserController = async (req, res) => {
   }
 
   try {
+    // If it's a UUID, look up by UUID first
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let userId = userUuid;
+    if (uuidRegex.test(userUuid)) {
+      const pool = (await import("../../core/db/connection.js")).default;
+      const [rows] = await pool.execute("SELECT id FROM users WHERE uuid = ?", [userUuid]);
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      userId = rows[0].id;
+    }
+    
     const updatedUser = await updateUser(userId, { name, email });
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
@@ -78,20 +100,28 @@ export const updateUserController = async (req, res) => {
 };
 
 export const deleteUserController = async (req, res) => {
-  const userId = req.params.id;
+  const userUuid = req.params.id;
 
   try {
+    // If it's a UUID, look up by UUID first
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let userId = userUuid;
+    if (uuidRegex.test(userUuid)) {
+      const pool = (await import("../../core/db/connection.js")).default;
+      const [rows] = await pool.execute("SELECT id FROM users WHERE uuid = ?", [userUuid]);
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      userId = rows[0].id;
+    }
+    
     const deletedUser = await deleteUserById(userId);
     if (!deletedUser) {
       return res.status(404).json({ message: "User not found" });
     }
-    return res
-      .status(200)
-      .json({ message: "User deleted successfully", user: deletedUser });
+    return res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to delete the user" });
   }
 };
-
-

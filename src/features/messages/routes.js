@@ -1,0 +1,12 @@
+import express from "express";
+import { authMiddleware } from "../auth/Middlewares/middleware.js";
+import { rateLimiter } from "../../core/utils/security.js";
+import { create, list, edit, remove, read } from "./controller.js";
+const router = express.Router();
+router.use(authMiddleware);
+router.get("/conversations/:id/messages", list);
+router.post("/conversations/:id/messages", rateLimiter({ prefix: "message", windowMs: 10000, maxAttempts: 30 }), create);
+router.post("/conversations/:id/read", read);
+router.patch("/messages/:id", edit);
+router.delete("/messages/:id", remove);
+export default router;

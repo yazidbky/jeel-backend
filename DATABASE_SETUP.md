@@ -4,16 +4,16 @@
 
 Your backend now uses PostgreSQL for data persistence instead of in-memory storage.
 
-## Database Configuration
+# Database Setup Guide
 
-The database connection uses the following environment variables (set in `.env`):
+This backend uses MySQL/MariaDB through `mysql2`. The messaging migration adds conversations, participants, messages, attachments, and delivery status tables.
 
 - `DB_HOST`: Database host (default: localhost)
 - `DB_PORT`: Database port (default: 5432)
 - `DB_NAME`: Database name (jeel_db)
-- `DB_USER`: Database user (postgres)
-- `DB_PASSWORD`: Database password
-
+- `DB_PORT`: Database port (default: 3306)
+- `DB_NAME`: Database name (jeel_db)
+- `DB_USER`: Database user
 ## Database Files
 
 ### `/src/db/connection.js`
@@ -23,8 +23,7 @@ Establishes and manages the PostgreSQL connection pool. All database queries use
 ### `/src/db/init.js`
 
 Automatically initializes the database schema when the server starts:
-
-- Creates the `users` table with columns: id, uuid, name, email, password, created_at, updated_at
+1. **Install MySQL or MariaDB** (if not already installed)
 - Creates an index on the email column for faster lookups
 
 ### `/src/db/schema.sql`
